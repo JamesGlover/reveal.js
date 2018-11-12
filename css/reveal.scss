@@ -171,6 +171,18 @@ body {
 	}
 }
 
+.reveal .slides section .fragment.fade-in-then-out-complete {
+	opacity: 0;
+	visibility: hidden;
+	display: none;
+
+	&.current-fragment {
+		opacity: 1;
+		visibility: inherit;
+		display: block;
+	}
+}
+
 .reveal .slides section .fragment.fade-in-then-semi-out {
 	opacity: 0;
 	visibility: hidden;
@@ -191,7 +203,8 @@ body {
 .reveal .slides section .fragment.highlight-green,
 .reveal .slides section .fragment.highlight-current-green,
 .reveal .slides section .fragment.highlight-blue,
-.reveal .slides section .fragment.highlight-current-blue {
+.reveal .slides section .fragment.highlight-current-blue,
+.reveal .slides section .fragment.highlight-toggle {
 	opacity: 1;
 	visibility: inherit;
 }
@@ -213,6 +226,12 @@ body {
 }
 .reveal .slides section .fragment.highlight-current-blue.current-fragment {
 	color: #1b91ff;
+}
+.reveal .slides section .fragment.highlight-toggle.current-fragment {
+	background: #666666;
+	border: 1px solid #eeeeee;
+	border-radius: 2px;
+	margin: -1px;
 }
 
 

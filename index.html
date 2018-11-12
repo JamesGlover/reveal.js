@@ -4,10 +4,10 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+		<title>Introduction to Limber</title>
 
 		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+		<link rel="stylesheet" href="css/theme/moon.css">
 
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="lib/css/zenburn.css">
@@ -24,8 +24,158 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section>
+					<h1>Introduction to Limber</h1>
+				</section>
+				<section>
+					<!-- Screenshots showing basic user entry -->
+					<section><img data-src="lib/images/login.png"/></section>
+					<section><img data-src="lib/images/scan.png"/></section>
+					<section><img data-src="lib/images/view.png"/></section>
+				</section>
+				<section>
+					<h2>Key points</h2>
+					<ul>
+						<li>No persistence (Sequencescape Client)</li>
+						<li>Labware driven</li>
+						<li>Behaviour determined by purpose</li>
+						<li>Key pipeline business logic is in Limber</li>
+					</ul>
+					<div>
+				</section>
+				<section>
+					<h2>Design principles</h2>
+					<div style="display: flex">
+						<div style="width: 70%;"><img data-src="lib/images/view.png"/></div>
+						<div>
+							<dl>
+								<dt>LHS</dt><dd>What you have</dd>
+								<dt>RHS</dt><dd>What you can do</dd>
+								<dt>Green</dt><dd>Creating stuff</dd>
+								<dt>Grey</dt><dd>Deviations from normal process, towards the bottom</dd>
+							</dl>
+						</div>
+					</div>
+				</section>
+				<section>
+					<section>
+						<h2>Configuration of a plate</h2>
+						<blockquote cite="#3">Behaviour determined by purpose</blockquote>
+						<code>config/purposes/*.yml</code>
+					</section>
+					<section>
+						<pre><caption>config/purposes/low_input.yml</caption><code data-trim data-noescape>
+							---
+							LBR Cherrypick:
+							  :asset_type: plate
+							  :stock_plate: true
+							  :cherrypickable_target: true
+							  :input_plate: true
+							  :presenter_class: Presenters::StockPlatePresenter
+							LBR mRNA Cap:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							  :parents:
+							  - LBR Cherrypick
+							LBR Globin:
+							  :asset_type: plate
+							  :expected_request_types:
+							  - limber_rnaag
+							  :parents:
+							  - LBR mRNA Cap
+							LBR Ribo DNase:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							  :parents:
+							  - LBR Cherrypick
+							LBR Globin DNase:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							  :parents:
+							  - LBR Globin
+							LBR RiboGlobin DNase:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							LBR Frag cDNA:
+							  :asset_type: plate
+							  :parents:
+							  - LBR Globin DNase
+							  - LBR Ribo DNase
+							  - LBR RiboGlobin DNase
+							LBR Frag:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							  :expected_request_types:
+							  - limber_rnaa
+							  :parents:
+							  - LBR mRNA Cap
+							LB cDNA:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							  :parents:
+							  - LBR Frag
+							LB cDNA XP:
+							  :asset_type: plate
+							  :presenter_class: Presenters::PermissivePresenter
+							  :parents:
+							  - LB cDNA
+							  - LBR Frag cDNA
+						</code></pre>
+					</section>
+					<section>
+						<h2>The default plate setup</h2>
+							<pre><code data-trim data-noescape>
+							<span data-fragment-index="1" class="fragment highlight-toggle">Example plate:</span>
+							  <span data-fragment-index="2" class="fragment highlight-toggle">:asset_type: plate</span>
+							  <span data-fragment-index="3" class="fragment highlight-toggle">:stock_plate: false</span>
+							  <span data-fragment-index="3" class="fragment highlight-toggle">:cherrypickable_target: false</span>
+							  <span data-fragment-index="3" class="fragment highlight-toggle">:input_plate: false</span>
+							  <span data-fragment-index="3" class="fragment highlight-toggle">:size: 96</span>
+							  <span data-fragment-index="4" class="fragment highlight-toggle">:presenter_class: Presenters::StandardPresenter</span>
+							  <span data-fragment-index="5" class="fragment highlight-toggle">state_changer_class: StateChangers::DefaultStateChanger</span>
+							  <span data-fragment-index="6" class="fragment highlight-toggle">:creator_class: LabwareCreators::TaggedPlate</span>
+							  <span data-fragment-index="7" class="fragment highlight-toggle">:parents:</span>
+							  <span data-fragment-index="7" class="fragment highlight-toggle">- LBR Cherrypick</span>
+							  <span data-fragment-index="8" class="fragment highlight-toggle">:default_printer_type: :plate_a</span>
+							</code></pre>
+							<dl>
+								<dt data-fragment-index="1" class="fragment fade-in-then-out-complete">Name</dt>
+									<dd data-fragment-index="1" class="fragment fade-in-then-out-complete">Identify plate to the user, and main key in configuration.</dd>
+								<dt data-fragment-index="2" class="fragment fade-in-then-out-complete">Type</dt>
+									<dd data-fragment-index="2" class="fragment fade-in-then-out-complete"><code>plate</code> or <code>tube</code>. Grouping UI elements and aiding config generation.</dd>
+								<dt data-fragment-index="3" class="fragment fade-in-then-out-complete">Sequencescape side configuration</dt>
+									<dd data-fragment-index="3" class="fragment fade-in-then-out-complete">Limber registers unknown plate types in Limber, these options get passed through.</dd>
+								<dt data-fragment-index="4" class="fragment fade-in-then-out-complete">Presenter</dt>
+									<dd data-fragment-index="4" class="fragment fade-in-then-out-complete">Determines how the plate gets presented to the user.</dd>
+								<dt data-fragment-index="5" class="fragment fade-in-then-out-complete">State Changer</dt>
+									<dd data-fragment-index="5" class="fragment fade-in-then-out-complete">Only one class at the moment. Handles plate transitions.</dd>
+								<dt data-fragment-index="6" class="fragment fade-in-then-out-complete">Creator</dt>
+									<dd data-fragment-index="6" class="fragment fade-in-then-out-complete">Used to create assets of this type.</dd>
+								<dt data-fragment-index="7" class="fragment fade-in-then-out-complete">Parents</dt>
+									<dd data-fragment-index="7" class="fragment fade-in-then-out-complete">Suggest this as a child for these parent types.</dd>
+								<dt data-fragment-index="8" class="fragment fade-in-then-out-complete">Default printer (misnamed)</dt>
+									<dd data-fragment-index="8" class="fragment fade-in-then-out-complete"><code>plate_a</code>,<code>plate_b</code>,<code>tube</code> Default printer in list.</dd>
+						</dl>
+					</section>
+					<section>
+						<h2>Other options...</h2>
+						<p>Some of these could probably be namespaced. I won't go into too much detail...</p>
+						<pre class="fragment">warnings</pre>
+						<pre class="fragment">tag_layout_templates <span class="fragment">😭</span></pre>
+						<pre class="fragment">suggest_library_pass_for</pre>
+						<pre class="fragment">expected_request_types</pre>
+						<pre class="fragment">pcr_stage</pre>
+						<pre>
+					</section>
+				</section>
+				<section>
+					<h2>The Labware Lifecyle</h2>
+				</section>
+				<section>
+					<h2>Show</h2>
+					<ul>
+					</ul>
+				</section>
 			</div>
 		</div>
 

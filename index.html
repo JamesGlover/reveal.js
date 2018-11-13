@@ -172,9 +172,48 @@
 					<h2>The Labware Lifecyle</h2>
 				</section>
 				<section>
-					<h2>Show</h2>
-					<ul>
-					</ul>
+					<section><h2>Show</h2></section>
+					<section>
+						<p>Handled by <code>PlatesController</code> or <code>TubesController</code>. Both inherit from Labware controller.</p>
+						<pre><code data-trim>
+							class LabwareController < ApplicationController
+							...
+							  def show
+							    @presenter = presenter_for(@labware)
+
+							    response.headers['Vary'] = 'Accept'
+							    respond_to do |format|
+							      format.html do
+							        render @presenter.page
+							      end
+							      format.csv do
+							        render @presenter.csv
+							        response.headers['Content-Disposition'] = "attachment; filename=#{@presenter.filename(params['offset'])}" if @presenter.filename
+							      end
+							      format.json {}
+							    end
+							  end
+							...
+
+						  def presenter_for(labware)
+						    Presenters.lookup_for(labware).new(
+						      api: api,
+						      labware: labware
+						    )
+						  end
+					  end
+
+						</code></pre>
+					</section>
+					<section>
+						<h3>Presenters</h3>
+						<code>app/models/presenters/<code>
+						<ul>
+							<li>Plates take new api, tubes still on old.</li>
+							<li>Determine what gets shown to the user</li>
+							<li>Determines which actions are available</li>
+							<li>Validators provide user feedback and warnings</li>
+					</section>
 				</section>
 			</div>
 		</div>

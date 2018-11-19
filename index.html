@@ -170,9 +170,14 @@
 				</section>
 				<section>
 					<h2>The Labware Lifecyle</h2>
+					<li>Find the parent - Show it</li>
+					<li>Create the child</li>
+					<li>Perform the transfer</li>
+					<li>Optional well failure</li>
+					<li>Create the next child</li>
 				</section>
 				<section>
-					<section><h2>Show</h2></section>
+					<section><h2>Find the parent - Show it</h2></section>
 					<section>
 						<p>Handled by <code>PlatesController</code> or <code>TubesController</code>. Both inherit from Labware controller.</p>
 						<pre><code data-trim>
@@ -207,13 +212,200 @@
 					</section>
 					<section>
 						<h3>Presenters</h3>
-						<code>app/models/presenters/<code>
+						<code>app/models/presenters/</code>
 						<ul>
 							<li>Plates take new api, tubes still on old.</li>
 							<li>Determine what gets shown to the user</li>
-							<li>Determines which actions are available</li>
+							<li>Determines which actions are available (state machine)</li>
 							<li>Validators provide user feedback and warnings</li>
+						</ul>
 					</section>
+				</section>
+				<section>
+					<section><h2>Create the child</h2></section>
+					<section><img data-src="lib/images/actions.png"/></section>
+					<section>
+						<pre>app/models/concerns/presenters/statemachine/state_allows_child_creation.rb<code data-trim>
+							module Presenters::Statemachine
+							  # Supports creation of child assets in this state
+							  module StateAllowsChildCreation
+							     def suggested_purpose_options
+							       compatible_purposes.select do |_purpose_uuid, purpose_settings|
+							         purpose_settings.parents&.include?(labware.purpose.name) &&
+							           compatible_pipeline?(purpose_settings.expected_request_types)
+							       end
+							     end
+							    ...
+							     def compatible_purposes
+							       Settings.purposes.lazy.select do |uuid, _purpose_settings|
+							         LabwareCreators.class_for(uuid).support_parent?(labware)
+							       end
+							     end
+							    ...
+							  end
+							 end
+						</code></pre>
+						Can move once the purpose settings get re-factored.
+					</section>
+					<section>
+						<pre>app/models/concerns/labware_creators/support_parent/tagged_plate_only.rb<code data-trim>
+							# frozen_string_literal: true
+							module LabwareCreators::SupportParent
+							  module TaggedPlateOnly
+							    extend ActiveSupport::Concern
+							    class_methods do
+							      def support_parent?(parent)
+							        parent.plate? && parent.tagged?
+							      end
+							    end
+
+							    def parent
+							      @parent ||= api.plate.find(parent_uuid)
+							    end
+							  end
+							end
+						</code></pre>
+						Can move once the purpose settings get re-factored.
+					</section>
+					<section>
+						<h3>LabwareCreators</h3>
+						<p>Two key types</p>
+						<dl>
+							<dt><pre>include NoCustomPage</pre></dt>
+							<dd>No user input required, essentially passes straight to a post, and creates the plate/tube.</dd>
+							<dt><pre>include LabwareCreators::CustomPage</pre></dt>
+							<dd>User input or feedback required. A get to the /new plage, and renders a form.</dd>
+						</dl>
+					</section>
+					<section>
+						<pre><code data-trim>
+						module LabwareCreators
+						  # Allows the user to create custom pooled tubes.
+						  # THe user may create an arbitrary number of tubes, with a
+						  # 1 or more wells in each. An individual well may contribute
+						  # to more than one tube.
+						  class CustomPooledTubes < PooledTubesBase
+						    include LabwareCreators::CustomPage
+						    include SupportParent::PlateReadyForCustomPoolingOnly
+
+						    self.page = 'custom_pooled_tubes'
+						    self.attributes += [:file]
+
+						    attr_accessor :file
+
+						    delegate :pools, to: :csv_file
+
+						    validates :file, presence: true
+						    validates_nested :csv_file, if: :file
+						    validate :wells_occupied?
+						...
+						</code></pre>
+						<p>Convention: page name same as creator class</p>
+					</section>
+					<section>
+						<h3>Typical stages</h3>
+						<dl>
+							<dt>Labware Creation</dt>
+							<dd>Create a new plate of the correct purpose, and associate it with its parents.</dd>
+							<dt>Transfer</dt>
+							<dd>Create transfer requests between wells/tubes to transfer samples into new locations.
+								<ul>
+									<li>Legacy approach: Transfer templates</li>
+									<li>New approach: Transfer request collections</li>
+								</ul>
+							</dd>
+							<dt>Other actions</dt>
+							<dd>Usually after transfer. eg. Applying baits, tags, flagging tag plates as used.</dd>
+						</dl>
+					</section>
+					<section>
+						<p>Currently a bit tangled, need to be more consistent.</p>
+					</section>
+				</section>
+				<section>
+					<section>
+						<h2>Perform the transfer</h2>
+						<ul>
+							<li>Manual Transfer</li>
+							<li>Robots</li>
+						</ul>
+						<p>Both go through state_change</p>
+					</section>
+					<section>
+						<h3>StateChange</h3>
+						<ul><li>Asset</li><li>User</li><li>Target State</li><li>Wells (optional)</li></ul>
+					</section>
+					<section>
+						<h3>StateChange</h3>
+						<dl>
+							<dt>Pending</dt><dd>Empty plate, registered in Lims</dd>
+							<dt>Started</dt><dd>(Some plates) Contains samples, more processing needed</dd>
+							<dt>processed_1/2</dt><dd>(Few plates) Tracks multi-stage processing</dd>
+							<dt>Passed</dt><dd>Material processed, ready for transfer downstream</dd>
+						</dl>
+					</section>
+					<section>
+						<dl>
+							<dt>Failed</dt><dd>Usually well level. Indicated library not suitable for further work.</dd>
+							<dt>Cancelled</dt><dd>Administrative decision. Needs a bit of tweaking</dd>
+						</dl>
+						<p>States on a plate</p>
+					</section>
+					<section>
+						<h3>Robots</h3>
+						<ul>
+							<li>Each 'robot' configures a particular program, transfer from one+ plate type to another.</li>
+							<li>A few too many to keep track of now. Improve conventions and organization.</li>
+							<li>Plan to separate out robot type, means we can indicate bed locations etc.</li>
+							<li>Possibly pull out 'program' as lots of robots very similar.</li>
+						</ul>
+					</section>
+					<section>
+						<pre>config/robots.rb<code data-trim>
+							# frozen_string_literal: true
+
+							require 'robot_configuration'
+
+							ROBOT_CONFIG = RobotConfiguration::Register.configure do
+							  # Simple robots and bravo robots both transfer a single 'passed' source plate to a single 'pending'
+							  # destination plate. They pass the target plate
+							  # Simple robots can transition to started if their second argument is 'started'
+
+							  # Custom robots are configured manually
+
+							  bravo_robot do
+							    from 'LB Cherrypick', bed(7)
+							    to 'LB Shear', bed(9)
+							  end
+
+							  ...
+
+						    custom_robot('zephyr-lib-pcr-purification',
+                  name: 'Zephyr LB Lib PCR => LB Lib PCR XP',
+                  layout: 'bed',
+                  verify_robot: false,
+                  beds: {
+                    bed(2).barcode  => { purpose: 'LB Lib PCR',    states: ['passed'],  label: 'Bed 2' },
+                    bed(7).barcode  => { purpose: 'LB Lib PCR-XP', states: ['pending'], label: 'Bed 7', parent: bed(2).barcode, target_state: 'passed' }
+                })
+						</code></pre>
+					</section>
+					<section>
+						<p>Limber automatically finds any robots which support the plate the user is currently viewing</p>
+						<p>Also lists them ALL on the front page.</p>
+					</section>
+				</section>
+				<section>
+					<h3>Direction</h3>
+					<ul>
+						<li>Use the JSON-API endpoints - Need to work out write permissions</li>
+						<li>Push business logic outwards - Use the request information directly</li>
+						<li>Allow the front end to talk to Sequencescape directly</li>
+						<li>Limber owns its pipelines</li>
+						<li>Tidy up labware creators</li>
+						<li>Tidy up robot configuration</li>
+						<li>Revisit configuration</li>
+					</ul>
 				</section>
 			</div>
 		</div>

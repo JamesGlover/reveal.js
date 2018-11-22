@@ -396,16 +396,34 @@
 					</section>
 				</section>
 				<section>
-					<h3>Direction</h3>
-					<ul>
-						<li>Use the JSON-API endpoints - Need to work out write permissions</li>
-						<li>Push business logic outwards - Use the request information directly</li>
-						<li>Allow the front end to talk to Sequencescape directly</li>
-						<li>Limber owns its pipelines</li>
-						<li>Tidy up labware creators</li>
-						<li>Tidy up robot configuration</li>
-						<li>Revisit configuration</li>
-					</ul>
+					<section>
+						<h3>Direction</h3>
+						<ul>
+							<li>Use the JSON-API endpoints - Need to work out write permissions</li>
+							<li>Push business logic outwards - Use the request information directly</li>
+							<li>Allow the front end to talk to Sequencescape directly</li>
+							<li>Limber owns its pipelines</li>
+							<li>Tidy up labware creators</li>
+							<li>Tidy up robot configuration</li>
+							<li>Revisit configuration</li>
+						</ul>
+					</section>
+					<section>
+						<section>
+						<pre>config/pipelines.yml<code data-trim>
+							---
+							- :name: WGS
+							  :library_type: limber_wgs
+							  :requirements:
+							  - tagged
+							  :steps:
+							    LB Cherrypick: LB Shear
+							    LB Shear: LB Post Shear
+							    LB Post Shear: LB End Prep
+							    LB End Prep: LB Lib PCR
+						</code></pre>
+					</section>
+					</section>
 				</section>
 			</div>
 		</div>

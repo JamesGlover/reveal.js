@@ -1,50 +1,183 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+    <title>RecordLoader</title>
 
-		<link rel="stylesheet" href="css/reset.css">
-		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/moon.css">
 
-		<!-- Theme used for syntax highlighting of code -->
-		<link rel="stylesheet" href="lib/css/monokai.css">
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/monokai.css">
 
-		<!-- Printing and PDF exports -->
-		<script>
-			var link = document.createElement( 'link' );
-			link.rel = 'stylesheet';
-			link.type = 'text/css';
-			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
-			document.getElementsByTagName( 'head' )[0].appendChild( link );
-		</script>
-	</head>
-	<body>
-		<div class="reveal">
-			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
-			</div>
-		</div>
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
 
-		<script src="js/reveal.js"></script>
+    <style>
+      .reveal pre code { max-height: 80% }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section><h2><code>RecordLoader</code> and Deployment</h2></section>
+        <section>
+          <h2>What's the problem?</h2>
+          <ul>
+            <li>Lots of PSD 'owned' data</li>
+            <li>Work involves creating records in the database, as well as changing the code</li>
+            <li>Using rake tasks, but easy to forget to run them</li>
+          </ul>
+        </section>
+        <section>
+          <h2>Why not use migrations</h2>
+          <ul>
+            <li>Intent</li>
+            <li>Drift</li>
+            <li>Testability</li>
+            <li>Repeatability</li>
+            <li>Flexibility</li>
+          </ul>
+        </section>
+        <section>
+          <h2>The almost solution...</h2>
+          <li>rake limber:setup</li>
+          <li>Idempotent</li>
+          <li>Runs on rake application:deploy</li>
+        </section>
+        <section>
+          <h2>But...</h2>
+          <li>rake application:deploy runs before migrations</li>
+          <li>Complicated</li>
+        </section>
+        <section>
+          <h2>rake application:post-deploy</h2>
+          <li>Add to psd-deploy in rails role, and enable for supporting apps</li>
+          <li>Hook Idempotent rake tasks into this</li>
+        </section>
+        <section>
+          <h2>Keep it simple</h2>
+          <code>RecordLoader</code>
+        </section>
+        <section>
+          <section>
+            <pre><caption>lib/record_loader/plate_type_loader.rb</caption>
+              <code data-trim data-noescape>
+              module RecordLoader
+                # Creates the specified plate types if they are not present
+                class PlateTypeLoader < RecordLoader::Base
+                  self.config_folder = 'plate_types'
 
-		<script>
-			// More info about config & dependencies:
-			// - https://github.com/hakimel/reveal.js#configuration
-			// - https://github.com/hakimel/reveal.js#dependencies
-			Reveal.initialize({
-				hash: true,
-				dependencies: [
-					{ src: 'plugin/markdown/marked.js' },
-					{ src: 'plugin/markdown/markdown.js' },
-					{ src: 'plugin/highlight/highlight.js' },
-					{ src: 'plugin/notes/notes.js', async: true }
-				]
-			});
-		</script>
-	</body>
+                  def create!
+                    ActiveRecord::Base.transaction do
+                      @config.each do |name, options|
+                        PlateType.create_with(options)
+                                 .find_or_create_by!(name: name)
+                      end
+                    end
+                  end
+                end
+              end
+            </code></pre>
+          </section>
+          <section>
+            <pre><code data-trim data-noescape>
+              ✔ ~/projects/james/sequencescape_2
+              10:32 $ ls config/default_records/plate_types/
+              plate_types.yml
+            </code></pre>
+            <pre><caption>config/default_records/plate_types/plate_types.yml</caption><code data-trim data-noescape>
+              ---
+              ABgene_0765:
+                maximum_volume: 800
+              ABgene_0800:
+                maximum_volume: 180
+              FluidX075:
+                maximum_volume: 500
+              FluidX03:
+                maximum_volume: 280
+              KingFisher 96 2ml:
+                maximum_volume: 2000
+              Optical96 and Base:
+                maximum_volume: 250
+            </code></pre>
+          </section>
+          <section>
+            <pre><caption>lib/tasks/plate_type_update.rake</caption>
+              <code data-trim data-noescape>
+                # frozen_string_literal: true
+
+                namespace :plate_type do
+                  desc 'Automatically generate absent plate types'
+                  task update: :environment do
+                    RecordLoader::PlateTypeLoader.new.create!
+                  end
+                end
+
+            </code></pre>
+          </section>
+          <section>
+            <ul>
+              <li>Add the rake task to application:post-deploy</li>
+              <li>Call the RecordLoader from seeds to get the same behaviour</li>
+              <li>Even call it from tests</li>
+            </ul>
+          </section>
+        </section>
+        <section>
+          <h2>Extra features</h2>
+          <li>Organize into multiple yaml files</li>
+          <li>Detects clashing keys</li>
+          <li>Specify a different folder for testing</li>
+          <li>Or load only specific files</li>
+          <pre><caption>lib/tasks/plate_type_update.rake</caption>
+            <code data-trim data-noescape>
+              RecordLoader::PlatePurposeLoader.new(
+                directory: 'spec/data/record_loader/plate_purposes',
+                files: ['002_example']
+              )
+          </code></pre>
+          </li>
+        </section>
+        <section>
+          <h2>Planned Features</h2>
+          <ul>
+            <li>Code improvements</li>
+            <li><code>example.dev.yml</code> For dev only records.</li>
+            <li><code>example.wip.yml</code> For WIP, enable with <code>WIP=example</code> env.</li>
+            <li>Hook the above into ansible</li>
+            <li><code>rails g record_loader RequestType</code></li>
+            <li>Migrate existing behaviour</li>
+            <li>Package as Gem</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+
+    <script src="js/reveal.js"></script>
+
+    <script>
+      // More info about config & dependencies:
+      // - https://github.com/hakimel/reveal.js#configuration
+      // - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+        hash: true,
+        dependencies: [
+          { src: 'plugin/markdown/marked.js' },
+          { src: 'plugin/markdown/markdown.js' },
+          { src: 'plugin/highlight/highlight.js' },
+          { src: 'plugin/notes/notes.js', async: true }
+        ]
+      });
+    </script>
+  </body>
 </html>

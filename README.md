@@ -6,7 +6,7 @@ To see the presentation you can either checkout this branch and run:
 ```npm start```
 
 Or simply visit:
-https://htmlpreview.github.io/?https://htmlpreview.github.io/?https://github.com/JamesGlover/reveal.js/blob/record-loader/index.html
+https://htmlpreview.github.io/?https://github.com/JamesGlover/reveal.js/blob/record-loader/index.html
 
 # reveal.js ![tests](https://github.com/hakimel/reveal.js/workflows/tests/badge.svg) <a href="https://slides.com?ref=github"><img src="https://s3.amazonaws.com/static.slid.es/images/slides-github-banner-320x40.png?1" alt="Slides" width="160" height="20"></a>
 

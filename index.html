@@ -71,7 +71,7 @@
         <section>
           <section>
             <pre><caption>lib/record_loader/plate_type_loader.rb</caption>
-              <code data-trim data-noescape>
+              <code data-trim data-noescape class="language-ruby">
                 # frozen_string_literal: true
 
                 module RecordLoader
@@ -80,7 +80,8 @@
                     self.config_folder = 'plate_types'
 
                     def create_or_update!(name, options)
-                      PlateType.create_with(options).find_or_create_by!(name: name)
+                      PlateType.create_with(options)
+                               .find_or_create_by!(name: name)
                     end
                   end
                 end
@@ -88,12 +89,13 @@
             <small>Based on WIP improvements</small>
           </section>
           <section>
-            <pre><code data-trim data-noescape>
+            <pre><code data-trim data-noescape  class="language-bash">
               ✔ ~/projects/james/sequencescape_2
               10:32 $ ls config/default_records/plate_types/
               plate_types.yml
             </code></pre>
-            <pre><caption>config/default_records/plate_types/plate_types.yml</caption><code data-trim data-noescape>
+            <pre><caption>config/default_records/plate_types/plate_types.yml</caption>
+              <code data-trim data-noescape  class="language-yaml">
               ---
               ABgene_0765:
                 maximum_volume: 800
@@ -111,16 +113,14 @@
           </section>
           <section>
             <pre><caption>lib/tasks/plate_type_update.rake</caption>
-              <code data-trim data-noescape>
-                # frozen_string_literal: true
-
-                namespace :plate_type do
-                  desc 'Automatically generate absent plate types'
-                  task update: :environment do
-                    RecordLoader::PlateTypeLoader.new.create!
-                  end
-                end
-
+              <code data-trim data-noescape class="language-ruby">
+# frozen_string_literal: true
+namespace :plate_type do
+  desc 'Automatically generate absent plate types'
+  task update: :environment do
+    RecordLoader::PlateTypeLoader.new.create!
+  end
+end
             </code></pre>
           </section>
           <section>
@@ -138,7 +138,7 @@
           <li>Specify a different folder for testing</li>
           <li>Or load only specific files</li>
           <pre><caption>lib/tasks/plate_type_update.rake</caption>
-            <code data-trim data-noescape>
+            <code data-trim data-noescape class="language-ruby">
               RecordLoader::PlatePurposeLoader.new(
                 directory: 'spec/data/record_loader/plate_purposes',
                 files: ['002_example']

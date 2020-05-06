@@ -72,22 +72,20 @@
           <section>
             <pre><caption>lib/record_loader/plate_type_loader.rb</caption>
               <code data-trim data-noescape>
-              module RecordLoader
-                # Creates the specified plate types if they are not present
-                class PlateTypeLoader < RecordLoader::Base
-                  self.config_folder = 'plate_types'
+                # frozen_string_literal: true
 
-                  def create!
-                    ActiveRecord::Base.transaction do
-                      @config.each do |name, options|
-                        PlateType.create_with(options)
-                                 .find_or_create_by!(name: name)
-                      end
+                module RecordLoader
+                  # Creates the specified plate types if they are not present
+                  class PlateTypeLoader < RecordLoader::Base
+                    self.config_folder = 'plate_types'
+
+                    def create_or_update!(name, options)
+                      PlateType.create_with(options).find_or_create_by!(name: name)
                     end
                   end
                 end
-              end
             </code></pre>
+            <small>Based on WIP improvements</small>
           </section>
           <section>
             <pre><code data-trim data-noescape>
